@@ -4,8 +4,9 @@
 # Build stage
 FROM golang:1.24-alpine AS builder
 
-# Install git, Node.js, and build tools (needed for frontend build and CGO)
-RUN apk add --no-cache git nodejs npm gcc musl-dev pkgconfig
+# Install git, Node.js, and build tools
+# CGO is disabled for the server build as we use modernc.org/sqlite
+RUN apk add --no-cache git nodejs npm
 
 # Set working directory
 WORKDIR /app
@@ -22,8 +23,8 @@ COPY . .
 # Build frontend
 RUN cd frontend && npm install && npm run build
 
-# Build the server version
-RUN CGO_ENABLED=1 GOOS=linux go build -tags server -trimpath -buildvcs=false -ldflags="-w -s" -o mrrss-server ./main-core.go
+# Build the server version - disable CGO for a portable static binary
+RUN CGO_ENABLED=0 GOOS=linux go build -tags server -trimpath -buildvcs=false -ldflags="-w -s" -o mrrss-server ./main-core.go
 
 # Runtime stage - minimal alpine image
 FROM alpine:latest
